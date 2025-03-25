@@ -28,17 +28,15 @@ def create_main_keyboard():
         InlineKeyboardButton("❤️ Поддержать проект", callback_data="support_project")
     )
     keyboard.add(
-        InlineKeyboardButton("❓ Помощь", callback_data="help"),
-        InlineKeyboardButton("🎀 Всё о GIFтах", callback_data="about_gifts")
+        InlineKeyboardButton("❓ Помощь", url="https://t.me/BladeAdmin"),
+        InlineKeyboardButton("🎀 Всё о GIFтах",url="https://t.me/AutoGiftNews")
     )
     return keyboard
-
 
 def create_topup_keyboard():
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
     return keyboard
-
 
 def create_check_keyboard():
     keyboard = InlineKeyboardMarkup()
@@ -46,12 +44,10 @@ def create_check_keyboard():
     keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
     return keyboard
 
-
 def create_insufficient_balance_keyboard():
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
     return keyboard
-
 
 def get_top_balance_text():
     return (
@@ -81,7 +77,6 @@ def get_top_balance_text():
         "#12627 👶 *Ugh* 0⭐ _(Вы)_"
     )
 
-
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.send_message(
@@ -93,7 +88,6 @@ def send_welcome(message):
         parse_mode="Markdown",
         reply_markup=create_main_keyboard()
     )
-
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
@@ -118,16 +112,14 @@ def handle_callback(call):
         bot.edit_message_text(
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
-            text="<b>🧾 Передача ваших звёзд чеками!Просто напишите </b>\n\n"
-
-                 f"```\nAutoGiftRobot 100``\n\n"
+            text="<b>🧾 Передача ваших звёзд чеками! Просто напишите </b>\n\n"
+                 f"```\nAutoGiftRobot 100```\n\n"
                  "<b>в диалог с кем-либо, и отправьте ему звёзды.</b>",
             reply_markup=create_check_keyboard(),
             parse_mode="HTML"
         )
     elif call.data == "create_check":
-   
-        balance = 0  
+        balance = 0
         if balance < 25:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -137,7 +129,6 @@ def handle_callback(call):
                 reply_markup=create_insufficient_balance_keyboard()
             )
         else:
-      
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
@@ -156,5 +147,5 @@ def handle_callback(call):
             reply_markup=create_main_keyboard()
         )
 
-
 bot.polling()
+
