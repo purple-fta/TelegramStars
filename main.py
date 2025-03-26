@@ -113,7 +113,7 @@ def handle_callback(call):
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             text="<b>🧾 Передача ваших звёзд чеками! Просто напишите </b>\n\n"
-                 f"```\nAutoGiftRobot 100```\n\n"
+                 f"<blockquote>\nAutoGiftRobot 100</blockquote>\n\n"
                  "<b>в диалог с кем-либо, и отправьте ему звёзды.</b>",
             reply_markup=create_check_keyboard(),
             parse_mode="HTML"
