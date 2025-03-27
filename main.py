@@ -1,3 +1,11 @@
+# TODO:
+# [ ] - Магазин подарков - добавить стикер перед выводом меню
+# [ ] - Топ по балансу - выделение и ник внизу 
+# [ ] - Ошибка - возврат звёзд
+# [ ] - Пополнение звёздами
+# [ ] - Авто покупка
+# [ ] - Язык
+
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
@@ -44,6 +52,13 @@ def create_check_keyboard():
     keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
     return keyboard
 
+def create_giftshop_keyboard():
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton("🎂-500🌟 [90686/500000]", callback_data="buy_gift_500"))
+    keyboard.add(InlineKeyboardButton("🕯️-350🌟 [410705/500000]", callback_data="buy_gift_350"))
+    keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
+    return keyboard
+
 def create_insufficient_balance_keyboard():
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
@@ -52,7 +67,6 @@ def create_insufficient_balance_keyboard():
 def get_top_balance_text():
     return (
         "🏆⭐ *Топ по балансу звёзд.* Имена скрыты в соображениях безопасности.\n\n"
-        "```"
         " 🥇 Имя скрыто 343801⭐\n"
         " 🥈 Имя скрыто 80000⭐\n"
         " 🥉 Имя скрыто 40000⭐\n"
@@ -73,7 +87,6 @@ def get_top_balance_text():
         " #18 👩‍⚖️ Имя скрыто 1095⭐\n"
         " #19 🧑‍🎨 Имя скрыто 1048⭐\n"
         " #20 👨‍🚒 Имя скрыто 1045⭐\n"
-        "```\n"
         "#12627 👶 *Ugh* 0⭐ _(Вы)_"
     )
 
@@ -84,7 +97,7 @@ def send_welcome(message):
         "🎁 *Приветствую!* Я бот для автоматической покупки новых NFT подарков в телеграме\n\n"
         "Подарки от бота *можно улучшить*, но нельзя *разобрать на звёзды*.\n\n"
         "Ниже ты можешь изменить настройки под свои запросы. Дальше бот сделает всё *сам*.\n\n"
-        f"```\nВаш баланс: 0 ⭐```",
+        f"\nВаш баланс: 0 ⭐",
         parse_mode="Markdown",
         reply_markup=create_main_keyboard()
     )
@@ -106,34 +119,50 @@ def handle_callback(call):
             text="🌟 *Отправьте боту желаемое количество звёзд для пополнения.\n\n"
                  "<b>Комиссия бота 0%.* </b>",
             reply_markup=create_topup_keyboard(),
-            parse_mode = "HTML"
+            parse_mode="HTML"
         )
-    elif call.data == "checks":
+    elif call.data == "giftshop":
+        # Отправляем стикер перед выводом меню
+        bot.send_sticker(call.message.chat.id, "CAACAgIAAxkDAAEB3wABZ-IC9x9W5qMyEVEGto1oLb_c8RAAArRbAAJhM7FL7fsQgT1iHXw2BA")
+        
+        # Отправляем сообщение с выбором подарков
         bot.edit_message_text(
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
-            text="<b>🧾 Передача ваших звёзд чеками! Просто напишите </b>\n\n"
-                 f"<blockquote>\nAutoGiftRobot 100</blockquote>\n\n"
-                 "<b>в диалог с кем-либо, и отправьте ему звёзды.</b>",
-            reply_markup=create_check_keyboard(),
-            parse_mode="HTML"
+            text="🎂-500🌟 [90686/500000]\n🕯️-350🌟 [410705/500000]",
+            reply_markup=create_giftshop_keyboard()
         )
-    elif call.data == "create_check":
-        balance = 0
-        if balance < 25:
+    elif call.data == "buy_gift_500":
+        balance = 0  # Пример, у пользователя 0 звёзд, нужно пополнить
+        if balance < 500:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
-                text="У вас недостаточный баланс звёзд для создания чека.\n"
-                     "Пожалуйста, пополните счёт минимум на 25 ⭐, чтобы реализовать это действие.",
+                text="Пожалуйста, пополните счёт минимум на 500⭐, чтобы реализовать это действие.",
                 reply_markup=create_insufficient_balance_keyboard()
             )
         else:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
-                text="Чек успешно создан! 🎉",
-                reply_markup=create_check_keyboard()
+                text="🎂 Подарок на 500 звёзд успешно куплен!",
+                reply_markup=create_giftshop_keyboard()
+            )
+    elif call.data == "buy_gift_350":
+        balance = 0  # Пример, у пользователя 0 звёзд, нужно пополнить
+        if balance < 350:
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text="Пожалуйста, пополните счёт минимум на 350⭐, чтобы реализовать это действие.",
+                reply_markup=create_insufficient_balance_keyboard()
+            )
+        else:
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text="🕯️ Подарок на 350 звёзд успешно куплен!",
+                reply_markup=create_giftshop_keyboard()
             )
     elif call.data == "back_to_main":
         bot.edit_message_text(
@@ -142,10 +171,43 @@ def handle_callback(call):
             text="🎁 *Приветствую!* Я бот для автоматической покупки новых NFT подарков в телеграме\n\n"
                  "Подарки от бота *можно улучшить*, но нельзя *разобрать на звёзды*.\n\n"
                  "Ниже ты можешь изменить настройки под свои запросы. Дальше бот сделает всё *сам*.\n\n"
-                 f"```\nВаш баланс: 0 ⭐```",
+                 f"\nВаш баланс: 0 ⭐",
             parse_mode="Markdown",
             reply_markup=create_main_keyboard()
         )
+    elif call.data == "refund":
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="💫 *Мгновенный возврат звёзд.*\n\n"
+                 "Размер вашей транзакции должен быть у вас на балансе. "
+                 "Вывод происходит в размере 100% от вашего пополнения.\n\n"
+                 "*Отправьте боту номер вашей транзакции вида:*\n\n"
+                 "stxuGTHRe_rG7ujdvx2mnRT0gdp-2yGiLkCmbhbnWhh4ZGamd3utzZukDzbpVmGMOCR107eQRjTCY8EEEtZV_EYl8lHroqo-px0G24xGJ1Ve_8\n\n"
+                 "Его можно найти в вашем профиле телеграма, раздел:\n"
+                 "*Звёзды.*",
+            parse_mode="Markdown",
+            reply_markup=create_insufficient_balance_keyboard()
+        )
+    elif call.data == "purchase_history":
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="*💫Вы еще не совершали покупок в нашем боте.*\n\n"
+                 "*Когда вы проведете первую транзакцию, она автоматически отобразится здесь.*",
+            parse_mode="Markdown",
+            reply_markup=create_topup_keyboard()
+        )
+    elif call.data == "support_project":
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="❤️ <b>Будем рады любой поддержке за нашу работу.</b>\n\n"
+                 "<b>USDT TRC20</b>:" f"<blockquote>TF7MSwqV2L51sqP7F1PgCMdYhxqFCPPSQB</blockquote> \n\n"
+                 "<b>TON</b>:" f"<blockquote>UQDax59lyQZrQBNdvYnJs-cpAnVNhuXX4H6PaKQlyEW33x3i</blockquote> \n\n"
+                "<b>BTC</b>:" f"<blockquote> bc1q44dq3lughhtczg39q970c3thn0fxe69jlr4cgx</blockquote>",
+            parse_mode="HTML",
+            reply_markup=create_topup_keyboard()
+        )
 
 bot.polling()
-
