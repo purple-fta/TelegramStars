@@ -101,7 +101,7 @@ def create_autobuy_keyboard(user_id):
         InlineKeyboardButton(f"От: {users_states[user_id]["min"]} ⭐", callback_data="min"),
         InlineKeyboardButton(f"До: {users_states[user_id]["max"]} ⭐", callback_data="max")
     )
-    keyboard.add(InlineKeyboardButton(f"Сплайн: {users_states[user_id]["spline"]} 🎁", callback_data="spline"))
+    keyboard.add(InlineKeyboardButton(f"Саплай: {users_states[user_id]["spline"]} 🎁", callback_data="spline"))
     keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
 
     return keyboard
