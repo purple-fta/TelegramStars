@@ -4,8 +4,8 @@
 # [x] - Ошибка - возврат звёзд
 # [ ] - Пополнение звёздами
 # [ ] - Авто покупка
-# [ ] - Язык
-# [ ] - Чеки
+# [x] - Язык
+# [x] - Чеки
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -214,5 +214,10 @@ def handle_callback(call):
             parse_mode="HTML",
             reply_markup=create_topup_keyboard()
         )
+    elif call.data == "change_language":
+        bot.answer_callback_query(call.id, "😴 Coming soon...")
+    elif call.data == "checks":
+        bot.answer_callback_query(call.id, "😴 Эта функция ещё в разработке")
+
 
 bot.polling()
