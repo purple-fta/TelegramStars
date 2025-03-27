@@ -3,7 +3,7 @@
 # [x] - Топ по балансу - выделение и ник внизу 
 # [x] - Ошибка - возврат звёзд
 # [ ] - Пополнение звёздами
-# [ ] - Авто покупка
+# [x] - Авто покупка
 # [x] - Язык
 # [x] - Чеки
 
@@ -16,6 +16,8 @@ load_dotenv()
 API_TOKEN = os.getenv('TELEGRAM_API_KEY')
 
 bot = telebot.TeleBot(API_TOKEN)
+
+users_states = {}
 
 def create_main_keyboard():
     keyboard = InlineKeyboardMarkup(row_width=2)
@@ -91,6 +93,30 @@ def get_top_balance_text(user_name):
         f"<blockquote><strong>#12627 👶 {user_name} 0⭐ (Вы)</strong></blockquote>"
     )
 
+def create_autobuy_keyboard(user_id):
+    keyboard = InlineKeyboardMarkup(row_width=2)
+    text = "🟢 Включён" if users_states[user_id]["on"] else "🔴 Выключен"
+    keyboard.add(InlineKeyboardButton(text, callback_data="enable"))
+    keyboard.add(
+        InlineKeyboardButton(f"От: {users_states[user_id]["min"]} ⭐", callback_data="min"),
+        InlineKeyboardButton(f"До: {users_states[user_id]["max"]} ⭐", callback_data="max")
+    )
+    keyboard.add(InlineKeyboardButton(f"Сплайн: {users_states[user_id]["spline"]} 🎁", callback_data="spline"))
+    keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
+
+    return keyboard
+
+
+def process_enter(message, opt):
+    if message.from_user.id in users_states:
+        if message.text.isdigit():
+            users_states[message.from_user.id][opt] = int(message.text)
+            send_autobuy(message)
+        
+
+
+
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.send_message(
@@ -103,6 +129,18 @@ def send_welcome(message):
         reply_markup=create_main_keyboard(),
     )
 
+    if message.from_user.id not in users_states:
+        users_states[message.from_user.id] = {"min": 0, "max": 0, "spline": 0, "on": False}
+
+def send_autobuy(call):
+    bot.send_message(
+        chat_id=call.chat.id,
+        text="🤖 <b>Меню автоматической покупки.</b>\n\n"
+                "<i>Приоритет в автопокупке имеют люди с самым большим балансом. Бот покупает самый лимитированный подарок из вышедших, учитывая ваши настройки.</i>\n\n"
+                "🎁 <b>Саплай:</b> количество копий вышедшего подарка. Если саплай подарка превышает ваши настройки, автобай не будет его покупать.",
+        parse_mode="HTML",
+        reply_markup=create_autobuy_keyboard(call.from_user.id)
+    )
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
@@ -170,9 +208,9 @@ def handle_callback(call):
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             text="🎁 *Приветствую!* Я бот для автоматической покупки новых NFT подарков в телеграме\n\n"
-                 "Подарки от бота *можно улучшить*, но нельзя *разобрать на звёзды*.\n\n"
-                 "Ниже ты можешь изменить настройки под свои запросы. Дальше бот сделает всё *сам*.\n\n"
-                 f"\nВаш баланс: 0 ⭐",
+            "Подарки от бота *можно улучшить*, но нельзя *разобрать на звёзды*.\n\n"
+            "Ниже ты можешь изменить настройки под свои запросы. Дальше бот сделает всё *сам*.\n\n"
+            "```\nВаш баланс: 0 ⭐```",
             parse_mode="Markdown",
             reply_markup=create_main_keyboard()
         )
@@ -218,6 +256,49 @@ def handle_callback(call):
         bot.answer_callback_query(call.id, "😴 Coming soon...")
     elif call.data == "checks":
         bot.answer_callback_query(call.id, "😴 Эта функция ещё в разработке")
+    elif call.data == "autobuy":
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="🤖 <b>Меню автоматической покупки.</b>\n\n"
+                 "<i>Приоритет в автопокупке имеют люди с самым большим балансом. Бот покупает самый лимитированный подарок из вышедших, учитывая ваши настройки.</i>\n\n"
+                 "🎁 <b>Саплай:</b> количество копий вышедшего подарка. Если саплай подарка превышает ваши настройки, автобай не будет его покупать.",
+            parse_mode="HTML",
+            reply_markup=create_autobuy_keyboard(call.from_user.id)
+        )
+    elif call.data == "enable":
+        users_states[call.from_user.id]["on"] =  not users_states[call.from_user.id]["on"]
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="🤖 <b>Меню автоматической покупки.</b>\n\n"
+                 "<i>Приоритет в автопокупке имеют люди с самым большим балансом. Бот покупает самый лимитированный подарок из вышедших, учитывая ваши настройки.</i>\n\n"
+                 "🎁 <b>Саплай:</b> количество копий вышедшего подарка. Если саплай подарка превышает ваши настройки, автобай не будет его покупать.",
+            parse_mode="HTML",
+            reply_markup=create_autobuy_keyboard(call.from_user.id)
+        )
+    elif call.data == "min":
+        bot.edit_message_text("⭐️ Отправьте боту <b>минимальную</b> цену подарка для покупки:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_autobuy")))
+        bot.register_next_step_handler(call.message, process_enter, "min")
+
+    elif call.data == "back_to_autobuy":
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="🤖 <b>Меню автоматической покупки.</b>\n\n"
+                 "<i>Приоритет в автопокупке имеют люди с самым большим балансом. Бот покупает самый лимитированный подарок из вышедших, учитывая ваши настройки.</i>\n\n"
+                 "🎁 <b>Саплай:</b> количество копий вышедшего подарка. Если саплай подарка превышает ваши настройки, автобай не будет его покупать.",
+            parse_mode="HTML",
+            reply_markup=create_autobuy_keyboard(call.from_user.id)
+        )
+    elif call.data == "max":
+        bot.edit_message_text("⭐️ Отправьте боту <b>максимальную</b> цену подарка для покупки:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_autobuy")))
+        bot.register_next_step_handler(call.message, process_enter, "max")
+
+    elif call.data == "spline":
+        bot.edit_message_text("🎁 Отправьте боту лимит количества подарков (саплай):", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_autobuy")))
+        bot.register_next_step_handler(call.message, process_enter, "spline")
+
 
 
 bot.polling()
