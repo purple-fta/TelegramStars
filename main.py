@@ -1,13 +1,3 @@
-# TODO:
-# [x] - Магазин подарков - добавить стикер перед выводом меню
-# [x] - Топ по балансу - выделение и ник внизу 
-# [x] - Ошибка - возврат звёзд
-# [x] - Пополнение звёздами
-# [x] - Авто покупка
-# [x] - Язык
-# [x] - Чеки
-# [x] - Магазин подарков
-
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
@@ -288,7 +278,7 @@ def handle_callback(call):
                  "Размер вашей транзакции должен быть у вас на балансе. "
                  "Вывод происходит в размере 100% от вашего пополнения.\n\n"
                  "<strong>Отправьте боту номер вашей транзакции вида:</strong>\n\n"
-                 "stxuGTHRe_rG7ujdvx2mnRT0gdp-2yGiLkCmbhbnWhh4ZGamd3utzZukDzbpVmGMOCR107eQRjTCY8EEEtZV_EYl8lHroqo-px0G24xGJ1Ve_8\n\n"
+                 "<blockquote>stxuGTHRe_rG7ujdvx2mnRT0gdp-2yGiLkCmbhbnWhh4ZGamd3utzZukDzbpVmGMOCR107eQRjTCY8EEEtZV_EYl8lHroqo-px0G24xGJ1Ve_8</blockquote>\n\n"
                  "Его можно найти в вашем профиле телеграма, раздел:\n"
                  "<strong>Звёзды.</strong>",
             parse_mode="HTML",
