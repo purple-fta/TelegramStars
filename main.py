@@ -2,10 +2,11 @@
 # [x] - Магазин подарков - добавить стикер перед выводом меню
 # [x] - Топ по балансу - выделение и ник внизу 
 # [x] - Ошибка - возврат звёзд
-# [ ] - Пополнение звёздами
+# [x] - Пополнение звёздами
 # [x] - Авто покупка
 # [x] - Язык
 # [x] - Чеки
+# [x] - Магазин подарков
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -67,7 +68,7 @@ def create_insufficient_balance_keyboard():
     keyboard.add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_main"))
     return keyboard
 
-def get_top_balance_text(user_name):
+def get_top_balance_text(user_name, user_id):
     return (
         "🏆⭐ <strong>Топ по балансу звёзд.</strong> Имена скрыты в соображениях безопасности.\n\n"
         "<blockquote> 🥇 Имя скрыто 343801⭐\n"
@@ -90,7 +91,7 @@ def get_top_balance_text(user_name):
         " #18 👩‍⚖️ Имя скрыто 1095⭐\n"
         " #19 🧑‍🎨 Имя скрыто 1048⭐\n"
         " #20 👨‍🚒 Имя скрыто 1045⭐</blockquote>\n"
-        f"<blockquote><strong>#12627 👶 {user_name} 0⭐ (Вы)</strong></blockquote>"
+        f"<blockquote><strong>#12627 👶 {user_name} {users_states[user_id]["coins"]}⭐ (Вы)</strong></blockquote>"
     )
 
 def create_autobuy_keyboard(user_id):
@@ -106,31 +107,72 @@ def create_autobuy_keyboard(user_id):
 
     return keyboard
 
+def create_buy_gift_keyboard(cost, amount):
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton(f"Купить за {cost} 🌟", callback_data=f"buy_gift_{cost}_really"))
+    keyboard.add(InlineKeyboardButton(f"{amount} из 500000 🎁", callback_data=f"sdfgvsdv"))
+    keyboard.add(InlineKeyboardButton(f"Улучшить за 25 🌟", callback_data=f"sdfg"))
+    keyboard.add(InlineKeyboardButton(f"⬅ Вернуться назад", callback_data=f"back_to_giftshop"))
+
+    return keyboard
+
 
 def process_enter(message, opt):
     if message.from_user.id in users_states:
         if message.text.isdigit():
-            users_states[message.from_user.id][opt] = int(message.text)
-            send_autobuy(message)
+            if opt == "donate":
+                bot.send_invoice(
+                    chat_id=message.chat.id,
+                    title="Пополнение счёта",
+                    description=f"Оплата {int(message.text)} звёзд.",
+                    invoice_payload="Пополнение счёта",
+                    currency="XTR",
+                    prices=[telebot.types.LabeledPrice("XTR", int(message.text))],
+                    provider_token=""   
+                )
+            else:
+                users_states[message.from_user.id][opt] = int(message.text)
+                send_autobuy(message)
         
 
-
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def pre_checkout_query(pre_checkout_query):
+    """
+    Обработчик pre-checkout запроса. Подтверждает возможность оплаты.
+    """
+    bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
+    if message.from_user.id not in users_states:
+        users_states[message.from_user.id] = {"min": 0, "max": 0, "spline": 0, "on": False, "coins": 0, "upgrade": False, "amount": 0, "cost": 0}
+        
     bot.send_message(
         message.chat.id,
         "🎁 *Приветствую!* Я бот для автоматической покупки новых NFT подарков в телеграме\n\n"
         "Подарки от бота *можно улучшить*, но нельзя *разобрать на звёзды*.\n\n"
         "Ниже ты можешь изменить настройки под свои запросы. Дальше бот сделает всё *сам*.\n\n"
-        "```\nВаш баланс: 0 ⭐```",
+        f"```\nВаш баланс: {users_states[message.from_user.id]["coins"]} ⭐```",
         parse_mode="Markdown",
         reply_markup=create_main_keyboard(),
     )
 
-    if message.from_user.id not in users_states:
-        users_states[message.from_user.id] = {"min": 0, "max": 0, "spline": 0, "on": False}
+def get_amount(message, cost, old_message_id):
+    if message.text.isdigit():
+        bot.delete_message(chat_id=message.chat.id, message_id=old_message_id)
+        users_states[message.from_user.id]["amount"] = int(message.text)
+        users_states[message.from_user.id]["cost"] = cost
+        bot.send_message(
+            chat_id=message.chat.id,
+            text=f"❗️ <b>Вы уверены что хотите купить </b> {message.text} 🎁 за {cost*int(message.text)} 🌟",
+            reply_markup=InlineKeyboardMarkup(row_width=1).add(
+                InlineKeyboardButton("🌟 Купить", callback_data="buy"),
+                InlineKeyboardButton(("✅" if users_states[message.from_user.id]["upgrade"] else "❌") + "Улучшение (+25🌟 каждый)", callback_data="upgrade_switch"),
+                InlineKeyboardButton("⬅ Вернуться назад", callback_data="giftshop"),
+            ),
+            parse_mode="HTML"
+        )  
 
 def send_autobuy(call):
     bot.send_message(
@@ -148,7 +190,7 @@ def handle_callback(call):
         bot.edit_message_text(
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
-            text=get_top_balance_text(call.message.chat.username),
+            text=get_top_balance_text(call.message.chat.username, call.from_user.id),
             parse_mode="HTML",
             reply_markup=create_topup_keyboard()
         )
@@ -161,7 +203,11 @@ def handle_callback(call):
             reply_markup=create_topup_keyboard(),
             parse_mode="HTML"
         )
+
+        bot.register_next_step_handler(call.message, process_enter, "donate")
     elif call.data == "giftshop":
+        users_states[call.from_user.id]["upgrade"] = False
+
         # Удаляем предыдущее сообщение 
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)       
         
@@ -172,37 +218,54 @@ def handle_callback(call):
             reply_markup=create_giftshop_keyboard() # Ваша клавиатура
         )
     elif call.data == "buy_gift_500":
-        balance = 0  # Пример, у пользователя 0 звёзд, нужно пополнить
-        if balance < 500:
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text="Пожалуйста, пополните счёт минимум на 500⭐, чтобы реализовать это действие.",
-                reply_markup=create_insufficient_balance_keyboard()
-            )
-        else:
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text="🎂 Подарок на 500 звёзд успешно куплен!",
-                reply_markup=create_giftshop_keyboard()
-            )
+        # bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)  
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=create_buy_gift_keyboard(500, "67 497") # Ваша клавиатура
+        )
     elif call.data == "buy_gift_350":
-        balance = 0  # Пример, у пользователя 0 звёзд, нужно пополнить
-        if balance < 350:
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text="Пожалуйста, пополните счёт минимум на 350⭐, чтобы реализовать это действие.",
-                reply_markup=create_insufficient_balance_keyboard()
-            )
-        else:
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text="🕯️ Подарок на 350 звёзд успешно куплен!",
-                reply_markup=create_giftshop_keyboard()
-            )
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=create_buy_gift_keyboard(350, "408 163") # Ваша клавиатура
+        )
+    elif call.data == "buy_gift_350_really":
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        old_message_id = bot.send_message(
+            call.message.chat.id,
+            text="🎁 Отправьте боту желаемое количество подарков для покупки:",
+            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_buy_gift_350"))
+        ).id
+        bot.register_next_step_handler(call.message, get_amount, 350, old_message_id)
+    elif call.data == "buy_gift_500_really":
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        old_message_id = bot.send_message(
+            call.message.chat.id,
+            text="🎁 Отправьте боту желаемое количество подарков для покупки:",
+            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_buy_gift_500"))
+        ).id
+        bot.register_next_step_handler(call.message, get_amount, 500, old_message_id)
+    elif call.data == "back_buy_gift_500":
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        bot.send_sticker(
+            chat_id=call.message.chat.id,
+            sticker="CAACAgIAAxkDAAEB3wABZ-IC9x9W5qMyEVEGto1oLb_c8RAAArRbAAJhM7FL7fsQgT1iHXw2BA",
+            reply_markup=create_buy_gift_keyboard(500, "67 497") # Ваша клавиатура
+        )
+    elif call.data == "back_buy_gift_350":
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        bot.send_sticker(
+            chat_id=call.message.chat.id,
+            sticker="CAACAgIAAxkDAAEB3wABZ-IC9x9W5qMyEVEGto1oLb_c8RAAArRbAAJhM7FL7fsQgT1iHXw2BA",
+            reply_markup=create_buy_gift_keyboard(350, "408 163") # Ваша клавиатура
+        )
+    elif call.data == "back_to_giftshop":
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=create_giftshop_keyboard() # Ваша клавиатура
+        )
     elif call.data == "back_to_main":
         bot.edit_message_text(
             chat_id=call.message.chat.id,
@@ -210,14 +273,13 @@ def handle_callback(call):
             text="🎁 *Приветствую!* Я бот для автоматической покупки новых NFT подарков в телеграме\n\n"
             "Подарки от бота *можно улучшить*, но нельзя *разобрать на звёзды*.\n\n"
             "Ниже ты можешь изменить настройки под свои запросы. Дальше бот сделает всё *сам*.\n\n"
-            "```\nВаш баланс: 0 ⭐```",
+            f"```\nВаш баланс: {users_states[call.from_user.id]["coins"]} ⭐```",
             parse_mode="Markdown",
             reply_markup=create_main_keyboard()
         )
     elif call.data == "back_to_main_from_sticker":
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
         send_welcome(call.message)
-
     elif call.data == "refund":
         bot.edit_message_text(
             chat_id=call.message.chat.id,
@@ -280,7 +342,6 @@ def handle_callback(call):
     elif call.data == "min":
         bot.edit_message_text("⭐️ Отправьте боту <b>минимальную</b> цену подарка для покупки:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_autobuy")))
         bot.register_next_step_handler(call.message, process_enter, "min")
-
     elif call.data == "back_to_autobuy":
         bot.edit_message_text(
             chat_id=call.message.chat.id,
@@ -294,10 +355,46 @@ def handle_callback(call):
     elif call.data == "max":
         bot.edit_message_text("⭐️ Отправьте боту <b>максимальную</b> цену подарка для покупки:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_autobuy")))
         bot.register_next_step_handler(call.message, process_enter, "max")
-
     elif call.data == "spline":
         bot.edit_message_text("🎁 Отправьте боту лимит количества подарков (саплай):", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Вернуться назад", callback_data="back_to_autobuy")))
         bot.register_next_step_handler(call.message, process_enter, "spline")
+    elif call.data == "upgrade_switch":
+        users_states[call.from_user.id]["upgrade"] = not users_states[call.from_user.id]["upgrade"]
+        if users_states[call.from_user.id]["upgrade"]:
+            users_states[call.from_user.id]["cost"]+=25
+        else:
+            users_states[call.from_user.id]["cost"]-=25
+
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.id,
+            text=f"❗️ <b>Вы уверены что хотите купить </b> {users_states[call.from_user.id]["amount"]} 🎁 за {users_states[call.from_user.id]["cost"]*int(users_states[call.from_user.id]["amount"])} 🌟",
+            reply_markup=InlineKeyboardMarkup(row_width=1).add(
+                InlineKeyboardButton("🌟 Купить", callback_data="buy"),
+                InlineKeyboardButton(("✅" if users_states[call.from_user.id]["upgrade"] else "❌") + "Улучшение (+25🌟 каждый)", callback_data="upgrade_switch"),
+                InlineKeyboardButton("⬅ Вернуться назад", callback_data="giftshop"),
+            ),
+            parse_mode="HTML"
+        )
+    elif call.data == "buy":
+        if users_states[call.from_user.id]["coins"] < users_states[call.from_user.id]["amount"]*users_states[call.from_user.id]["cost"]:
+            bot.edit_message_text(
+                text=f"У вас не хватает {users_states[call.from_user.id]["amount"]*users_states[call.from_user.id]["cost"]-users_states[call.from_user.id]["coins"]} 🌟",
+                chat_id=call.message.chat.id,
+                message_id=call.message.id,
+                reply_markup=InlineKeyboardMarkup().add(
+                    InlineKeyboardButton("💳 Пополнить счёт", callback_data="topup")
+                )
+            )
+
+
+@bot.message_handler(content_types=['successful_payment'])
+def successful_payment(message):
+    """
+    Обработчик успешного платежа.
+    """
+    users_states[message.from_user.id]["coins"] += 1
+    send_welcome(message)
 
 
 
