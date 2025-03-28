@@ -135,6 +135,7 @@ def pre_checkout_query(pre_checkout_query):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
+    print(f"🚪 Добро пожаловать {message.from_user.first_name} | @{message.from_user.username}")
     if message.from_user.id not in users_states:
         users_states[message.from_user.id] = {"min": 0, "max": 0, "spline": 0, "on": False, "coins": 0, "upgrade": False, "amount": 0, "cost": 0}
         
